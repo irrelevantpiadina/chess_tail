@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use std::io;
 
 use macroquad::{miniquad::window, prelude::*};
