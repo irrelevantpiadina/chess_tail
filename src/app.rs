@@ -394,7 +394,7 @@ impl App {
                         should_break = true;
                     }
 
-                    ui.same_line(50.0);
+                    ui.same_line(100.0);
 
                     if ui.button(None, "Back") {
                         self.state = State::Home;
