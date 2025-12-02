@@ -1,8 +1,8 @@
-#![windows_subsystem = "windows"]
-
 use std::io;
 
 use macroquad::{miniquad::window, prelude::*};
+
+use hide_console;
 
 mod app;
 mod events;
@@ -15,6 +15,8 @@ const WIDTH: u32 = 1000;
 
 #[macroquad::main("chess_tail")]
 async fn main() -> io::Result<()> {
+    hide_console::hide_console();
+
     window::set_window_position(100, 100);
     window::set_window_size(WIDTH, (WIDTH as f32 / WIDTH_TO_HEIGHT_RATIO) as u32);
 

@@ -61,8 +61,9 @@ checksum = "9555578bc9e57714c812a1f84e4fc5b4d21fcb063490c624de019f7464c91268"
 
 [[package]]
 name = "chess_tail"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
+ "hide_console",
  "libchess",
  "macroquad",
 ]
@@ -162,6 +163,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hide_console"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "011a8b68c5b111a3774df573f3f341c9f41f6ed3489b33ae927f35a63a8277f9"
+dependencies = [
+ "cfg-if",
+ "winapi",
+]
+
+[[package]]
 name = "image"
 version = "0.24.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -183,6 +194,7 @@ checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
 [[package]]
 name = "libchess"
 version = "0.1.0"
+source = "git+https://github.com/irrelevantpiadina/libchess#f5d05324d553d59cf4f8baa18819caaefc9b21c4"
 dependencies = [
  "colored",
  "mimalloc",
