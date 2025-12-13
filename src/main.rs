@@ -2,8 +2,6 @@ use std::io;
 
 use macroquad::{miniquad::window, prelude::*};
 
-use hide_console;
-
 mod app;
 mod events;
 mod game;

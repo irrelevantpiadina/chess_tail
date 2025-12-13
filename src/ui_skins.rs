@@ -57,7 +57,7 @@ pub fn standard(font: &Font) -> ui::Skin {
     let label_style = ui::root_ui()
         .style_builder()
         .text_color(WHITE)
-        .font_size(15)
+        .font_size(11)
         .with_font(font)
         .unwrap()
         .build();
@@ -83,6 +83,7 @@ pub fn standard(font: &Font) -> ui::Skin {
             bottom: 5.0,
             top: 5.0,
         })
+        .font_size(13)
         .with_font(font)
         .unwrap()
         .build();

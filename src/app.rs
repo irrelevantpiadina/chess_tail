@@ -1,4 +1,9 @@
-use std::{collections::HashSet, fs, sync, thread, time};
+use std::{
+    collections::HashSet,
+    fs,
+    sync::{LazyLock, Mutex},
+    thread, time,
+};
 
 use macroquad::{
     prelude::*,
@@ -11,8 +16,7 @@ use libchess::{self as lc, color as chess_color, pos};
 const HUMAN_PLAYER: usize = 0;
 // const ROUGHLY_THE_MAX_WIDTH_OF_CLOCK_TEXT: f32 = 261.34401;
 
-static GAME: sync::LazyLock<sync::Mutex<Option<game::Game>>> =
-    sync::LazyLock::new(|| sync::Mutex::new(None));
+static GAME: LazyLock<Mutex<Option<game::Game>>> = LazyLock::new(|| Mutex::new(None));
 
 #[derive(Clone)]
 pub struct MouseInputSquares {
@@ -56,7 +60,7 @@ pub enum State {
 
 pub struct App {
     pub state: State,
-    // pub game: sync::Mutex<Option<game::Game>>,
+    // pub game: Mutex<Option<game::Game>>,
     pub game_settings: game::Settings,
     pub engines_list: Vec<EnginePath>,
     pub vb: vb::VisualBoard,
@@ -136,13 +140,14 @@ impl App {
                     .map(|e| e.unwrap().file_name().into_string().unwrap())
                     .collect::<Vec<String>>(),
             },
-            // game: sync::Mutex::new(None),
+            // game: Mutex::new(None),
             game_settings: game::Settings {
                 position_fen: pos::START_FEN.to_string(),
                 white_engine_path: None,
                 black_engine_path: None,
-                wtime_s: "60".to_string(),
-                btime_s: "60".to_string(),
+                max_engine_think_time_s: "5".to_string(),
+                wtime_s: "600".to_string(),
+                btime_s: "600".to_string(),
                 wincrement_ms: "0".to_string(),
                 bincrement_ms: "0".to_string(),
             },
@@ -342,6 +347,13 @@ impl App {
                         &mut self.game_settings.bincrement_ms,
                     );
 
+                    ui.input_text(hash!(), "Max Engine Thinking Time", &mut self.game_settings.max_engine_think_time_s);
+                    ui.label(None, "(Leave empty or 0 for unlimited time)");
+
+                    for _ in 0..10 {
+                        ui.separator();
+                    }
+
                     ui.input_text(hash!(), "FEN", &mut self.game_settings.position_fen);
                     ui.label(
                         None,
@@ -354,6 +366,15 @@ impl App {
 
                     if self.game_settings.bincrement_ms.len() > 7 {
                         self.game_settings.bincrement_ms.truncate(7);
+                    }
+
+
+                    if self.game_settings.max_engine_think_time_s.len() > 7 {
+                        self.game_settings.max_engine_think_time_s.truncate(7);
+                    }
+
+                    if self.game_settings.max_engine_think_time_s == "" {
+                        self.game_settings.max_engine_think_time_s = "0".to_string();
                     }
 
                     if self.game_settings.position_fen.replace(" ", "") == "".to_string() {
@@ -373,6 +394,7 @@ impl App {
                         && self.game_settings.btime_s.parse::<u64>().is_ok()
                         && self.game_settings.wincrement_ms.parse::<u64>().is_ok()
                         && self.game_settings.bincrement_ms.parse::<u64>().is_ok()
+                        && self.game_settings.max_engine_think_time_s.parse::<u64>().is_ok()
                     {
                         self.game_settings.white_engine_path = if white_player == HUMAN_PLAYER {
                             None
@@ -538,37 +560,37 @@ impl App {
     }
 
     async fn in_game(&mut self) {
-        static POST_RUN_INFO: sync::LazyLock<sync::Mutex<game::PostRunInfo>> =
-            sync::LazyLock::new(|| {
-                sync::Mutex::new(game::PostRunInfo {
-                    position: pos::Position::blank(),
-                    app_state: State::InGame,
-                })
-            });
-
-        static GAME_INPUT_SQUARES: sync::LazyLock<sync::Mutex<MouseInputSquares>> =
-            sync::LazyLock::new(|| {
-                sync::Mutex::new(MouseInputSquares {
-                    keys_down: HashSet::new(),
-                    up_left: None,
-                    down_left: None,
-                    down_right: None,
-                })
-            });
-
-        static LC_DATA_MTX: sync::LazyLock<sync::Mutex<LibchessData>> = sync::LazyLock::new(|| {
-            let (masks, zb) = libchess::init();
-            sync::Mutex::new(LibchessData { masks, zb })
+        static POST_RUN_INFO: LazyLock<Mutex<game::PostRunInfo>> = LazyLock::new(|| {
+            Mutex::new(game::PostRunInfo {
+                position: pos::Position::blank(),
+                app_state: State::InGame,
+            })
         });
 
-        static WTIME_MTX: sync::LazyLock<sync::Mutex<time::Duration>> =
-            sync::LazyLock::new(|| sync::Mutex::new(time::Duration::ZERO));
+        static GAME_INPUT_SQUARES: LazyLock<Mutex<MouseInputSquares>> = LazyLock::new(|| {
+            Mutex::new(MouseInputSquares {
+                keys_down: HashSet::new(),
+                up_left: None,
+                down_left: None,
+                down_right: None,
+            })
+        });
 
-        static BTIME_MTX: sync::LazyLock<sync::Mutex<time::Duration>> =
-            sync::LazyLock::new(|| sync::Mutex::new(time::Duration::ZERO));
+        static LC_DATA_MTX: LazyLock<Mutex<LibchessData>> = LazyLock::new(|| {
+            let (masks, zb) = libchess::init();
+            Mutex::new(LibchessData { masks, zb })
+        });
 
-        static BREAK_THREAD_LOOP: sync::LazyLock<sync::Mutex<bool>> =
-            sync::LazyLock::new(|| sync::Mutex::new(false));
+        static WTIME_MTX: LazyLock<Mutex<time::Duration>> =
+            LazyLock::new(|| Mutex::new(time::Duration::ZERO));
+
+        static BTIME_MTX: LazyLock<Mutex<time::Duration>> =
+            LazyLock::new(|| Mutex::new(time::Duration::ZERO));
+
+        static UI_THREAD_ELAPSED_TIME: LazyLock<Mutex<time::Duration>> =
+            LazyLock::new(|| Mutex::new(time::Duration::ZERO));
+
+        static BREAK_THREAD_LOOP: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
 
         *POST_RUN_INFO.lock().unwrap() = game::PostRunInfo {
             position: pos::Position::from_fen(&self.game_settings.position_fen, &self.lc_data.zb),
@@ -600,6 +622,13 @@ impl App {
                 game.btime = *BTIME_MTX.lock().unwrap();
 
                 game.mouse_input_sqs = (*GAME_INPUT_SQUARES.lock().unwrap()).clone();
+
+                game.ui_thread_elapsed_time = *UI_THREAD_ELAPSED_TIME.lock().unwrap();
+
+                if game.elapsed_engine_think_time.is_zero() {
+                    *UI_THREAD_ELAPSED_TIME.lock().unwrap() = time::Duration::ZERO;
+                }
+
                 let p = game.run(&LC_DATA_MTX.lock().unwrap());
                 *POST_RUN_INFO.lock().unwrap() = p;
             }
@@ -623,6 +652,9 @@ impl App {
             .sync_pieces(&POST_RUN_INFO.lock().unwrap().clone().position);
 
         loop {
+            *UI_THREAD_ELAPSED_TIME.lock().unwrap() +=
+                time::Duration::from_secs_f32(get_frame_time());
+
             let post_run_info_cpy = POST_RUN_INFO.lock().unwrap().clone();
 
             events::do_board_mouse_events(

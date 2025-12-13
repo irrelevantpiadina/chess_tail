@@ -38,6 +38,7 @@ pub struct Settings {
     pub position_fen: String,
     pub white_engine_path: Option<app::EnginePath>,
     pub black_engine_path: Option<app::EnginePath>,
+    pub max_engine_think_time_s: String,
     pub wtime_s: String,
     pub btime_s: String,
     pub wincrement_ms: String,
@@ -55,10 +56,12 @@ pub struct Game {
     pub position: pos::Position,
     pub engines: [Option<uci::Engine>; 2],
     pub engine_init_phases: [EngineInitPhase; 2],
+    pub engine_move_requested: bool,
     pub wtime: time::Duration,
     pub btime: time::Duration,
-    // pub wincrement: time::Duration,
-    // pub bincrement: time::Duration,
+    pub max_engine_think_time: time::Duration,
+    pub elapsed_engine_think_time: time::Duration,
+    pub ui_thread_elapsed_time: time::Duration,
     pub mouse_input_sqs: app::MouseInputSquares,
 }
 
@@ -86,8 +89,12 @@ impl Game {
             },
             wtime: time::Duration::from_secs(options.wtime_s.parse().unwrap()),
             btime: time::Duration::from_secs(options.btime_s.parse().unwrap()),
-            // wincrement: time::Duration::from_millis(options.wincrement_ms.parse().unwrap()),
-            // bincrement: time::Duration::from_millis(options.bincrement_ms.parse().unwrap()),
+            max_engine_think_time: time::Duration::from_secs(
+                options.max_engine_think_time_s.parse().unwrap(),
+            ),
+            ui_thread_elapsed_time: time::Duration::ZERO,
+            elapsed_engine_think_time: time::Duration::ZERO,
+            engine_move_requested: false,
         })
     }
 }
@@ -188,6 +195,8 @@ impl Game {
         }
 
         if let Some(mov) = self.get_move() {
+            self.engine_move_requested = false;
+
             if legal_moves.contains(&mov) {
                 self.make_move(mov, &lc_data.zb);
             }
@@ -243,20 +252,29 @@ impl Game {
             .as_mut()
             .unwrap();
 
-        e.request_move(
-            &self.position,
-            &self.sarting_fen,
-            self.wtime.as_millis(),
-            self.btime.as_millis(),
-        )
-        .ok()?;
+        if !self.engine_move_requested {
+            e.request_move(
+                &self.position,
+                &self.sarting_fen,
+                self.wtime.as_millis(),
+                self.btime.as_millis(),
+            )
+            .ok()?;
 
-        let mut mov = e.try_get_move(&self.position);
-        while mov.is_none() {
-            mov = e.try_get_move(&self.position);
+            self.engine_move_requested = true;
+            self.elapsed_engine_think_time = time::Duration::ZERO;
         }
 
-        return mov.unwrap();
+        self.elapsed_engine_think_time = self.ui_thread_elapsed_time;
+
+        if self.elapsed_engine_think_time >= self.max_engine_think_time
+            && !self.max_engine_think_time.is_zero()
+        {
+            e.send(uci::STOP).ok()?;
+            self.elapsed_engine_think_time = time::Duration::ZERO;
+        }
+
+        return e.try_get_move(&self.position)?;
     }
 
     fn get_move(&mut self) -> Option<moves::Move> {
