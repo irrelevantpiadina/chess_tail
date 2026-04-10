@@ -587,7 +587,7 @@ impl App {
         static BTIME_MTX: LazyLock<Mutex<time::Duration>> =
             LazyLock::new(|| Mutex::new(time::Duration::ZERO));
 
-        static UI_THREAD_ELAPSED_TIME: LazyLock<Mutex<time::Duration>> =
+        static UI_THREAD_DELTA_TIME: LazyLock<Mutex<time::Duration>> =
             LazyLock::new(|| Mutex::new(time::Duration::ZERO));
 
         static BREAK_THREAD_LOOP: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
@@ -623,14 +623,14 @@ impl App {
 
                 game.mouse_input_sqs = (*GAME_INPUT_SQUARES.lock().unwrap()).clone();
 
-                game.ui_thread_elapsed_time = *UI_THREAD_ELAPSED_TIME.lock().unwrap();
+                game.ui_thread_delta_time = *UI_THREAD_DELTA_TIME.lock().unwrap();
 
-                if game.elapsed_engine_think_time.is_zero() {
-                    *UI_THREAD_ELAPSED_TIME.lock().unwrap() = time::Duration::ZERO;
-                }
-
-                let p = game.run(&LC_DATA_MTX.lock().unwrap());
+                let (p, break_thread) = game.run(&LC_DATA_MTX.lock().unwrap());
                 *POST_RUN_INFO.lock().unwrap() = p;
+
+                if break_thread {
+                    break;
+                }
             }
         });
 
@@ -652,8 +652,7 @@ impl App {
             .sync_pieces(&POST_RUN_INFO.lock().unwrap().clone().position);
 
         loop {
-            *UI_THREAD_ELAPSED_TIME.lock().unwrap() +=
-                time::Duration::from_secs_f32(get_frame_time());
+            *UI_THREAD_DELTA_TIME.lock().unwrap() = time::Duration::from_secs_f32(get_frame_time());
 
             let post_run_info_cpy = POST_RUN_INFO.lock().unwrap().clone();
 

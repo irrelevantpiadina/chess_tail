@@ -61,7 +61,7 @@ pub struct Game {
     pub btime: time::Duration,
     pub max_engine_think_time: time::Duration,
     pub elapsed_engine_think_time: time::Duration,
-    pub ui_thread_elapsed_time: time::Duration,
+    pub ui_thread_delta_time: time::Duration,
     pub mouse_input_sqs: app::MouseInputSquares,
 }
 
@@ -92,7 +92,7 @@ impl Game {
             max_engine_think_time: time::Duration::from_secs(
                 options.max_engine_think_time_s.parse().unwrap(),
             ),
-            ui_thread_elapsed_time: time::Duration::ZERO,
+            ui_thread_delta_time: time::Duration::ZERO,
             elapsed_engine_think_time: time::Duration::ZERO,
             engine_move_requested: false,
         })
@@ -138,7 +138,7 @@ impl Game {
         self.position.make_move(mov, zb);
     }
 
-    pub fn run(&mut self, lc_data: &app::LibchessData) -> PostRunInfo {
+    pub fn run(&mut self, lc_data: &app::LibchessData) -> (PostRunInfo, bool) {
         let legal_moves = moves::gen_legal(&mut self.position, &lc_data.masks, &lc_data.zb);
 
         let mut post_run_info = PostRunInfo {
@@ -202,10 +202,17 @@ impl Game {
             }
         }
 
-        PostRunInfo {
-            position: self.position.clone(),
-            ..post_run_info
-        }
+        (
+            PostRunInfo {
+                position: self.position.clone(),
+                ..post_run_info.clone()
+            },
+            if let app::State::GameFinish { .. } = post_run_info.app_state {
+                true
+            } else {
+                false
+            },
+        )
     }
 
     fn get_player_move(&mut self) -> Option<moves::Move> {
@@ -265,7 +272,7 @@ impl Game {
             self.elapsed_engine_think_time = time::Duration::ZERO;
         }
 
-        self.elapsed_engine_think_time = self.ui_thread_elapsed_time;
+        self.elapsed_engine_think_time += self.ui_thread_delta_time;
 
         if self.elapsed_engine_think_time >= self.max_engine_think_time
             && !self.max_engine_think_time.is_zero()
