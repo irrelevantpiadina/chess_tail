@@ -138,8 +138,8 @@ impl Game {
         self.position.make_move(mov, zb);
     }
 
-    pub fn run(&mut self, lc_data: &app::LibchessData) -> (PostRunInfo, bool) {
-        let legal_moves = moves::gen_legal(&mut self.position, &lc_data.masks, &lc_data.zb);
+    pub fn run(&mut self, lc_data: &libchess::InitData) -> (PostRunInfo, bool) {
+        let legal_moves = moves::gen_legal(&mut self.position, &lc_data);
 
         let mut post_run_info = PostRunInfo {
             position: pos::Position::blank(),

@@ -468,7 +468,7 @@ impl VisualBoard {
     pub fn draw_board(
         &mut self,
         position: Option<&mut pos::Position>,
-        lc_data: &app::LibchessData,
+        lc_data: &libchess::InitData,
     ) -> time::Duration {
         let draw_time = time::Instant::now();
 
@@ -494,7 +494,7 @@ impl VisualBoard {
             }
 
             self.highlight_selected_squares();
-            self.highlight_legal_moves(moves::gen_legal(position, &lc_data.masks, &lc_data.zb));
+            self.highlight_legal_moves(moves::gen_legal(position, &lc_data));
 
             self.draw_pieces(position);
         } else {

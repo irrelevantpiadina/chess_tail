@@ -33,12 +33,6 @@ pub struct EnginePath {
 }
 
 #[derive(Clone)]
-pub struct LibchessData {
-    pub masks: lc::AttackMasks,
-    pub zb: lc::ZobristValues,
-}
-
-#[derive(Clone)]
 pub enum State {
     AssetLoading {
         piece_paths: Vec<String>,
@@ -66,7 +60,7 @@ pub struct App {
     pub vb: vb::VisualBoard,
     pub font: Font,
     pub ui_skin: ui::Skin,
-    pub lc_data: LibchessData,
+    pub lc_data: lc::InitData,
 }
 
 trait Clock {
@@ -104,8 +98,6 @@ impl App {
             b: 176.0 / 255.0,
             a: 255.0 / 255.0,
         };
-
-        let (masks, zb) = lc::init();
 
         let mut engines_list = Vec::new();
 
@@ -157,7 +149,7 @@ impl App {
                 .await
                 .unwrap(),
             ui_skin: ui::root_ui().default_skin(),
-            lc_data: LibchessData { masks, zb },
+            lc_data: lc::init(),
         };
 
         a.ui_skin = ui_skins::standard(&a.font);
@@ -576,10 +568,8 @@ impl App {
             })
         });
 
-        static LC_DATA_MTX: LazyLock<Mutex<LibchessData>> = LazyLock::new(|| {
-            let (masks, zb) = libchess::init();
-            Mutex::new(LibchessData { masks, zb })
-        });
+        static LC_DATA_MTX: LazyLock<Mutex<lc::InitData>> =
+            LazyLock::new(|| Mutex::new(lc::init()));
 
         static WTIME_MTX: LazyLock<Mutex<time::Duration>> =
             LazyLock::new(|| Mutex::new(time::Duration::ZERO));

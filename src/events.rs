@@ -126,7 +126,7 @@ pub fn do_key_events(vb: &mut VisualBoard, position: &pos::Position) {
         vb.draw_ply = 0;
         vb.sync_pieces(&pos::Position::from_fen(
             pos::START_FEN,
-            &libchess::init().1, // forgive me
+            &libchess::init().zb, // forgive me
         ));
     } else if is_key_pressed(KeyCode::F) {
         vb.is_flipped = !vb.is_flipped;
